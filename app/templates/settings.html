@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - AppHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Settings</h1>
+        <p class="subtitle">Configure API keys and preferences</p>
+    </div>
+</div>
+
+<!-- Settings Tabs -->
+<div class="settings-tabs">
+    <button class="tab-btn active" data-tab="agents" onclick="switchTab('agents')">
+        <i class="fas fa-robot"></i> AI Agent APIs
+    </button>
+    <button class="tab-btn" data-tab="notifications" onclick="switchTab('notifications')">
+        <i class="fas fa-bell"></i> Notifications
+    </button>
+    <button class="tab-btn" data-tab="preferences" onclick="switchTab('preferences')">
+        <i class="fas fa-sliders-h"></i> Preferences
+    </button>
+</div>
+
+<!-- Agent APIs Tab -->
+<div id="tab-agents" class="tab-content active">
+    <div class="settings-section">
+        <div class="section-header">
+            <h2>AI Agent API Keys</h2>
+            <p class="help-text">
+                Configure API keys for various AI agent platforms. These keys are stored securely and used to trigger remote builds.
+                <a href="https://docs.apphub.dev/agents" target="_blank" class="link">Learn more <i class="fas fa-external-link-alt"></i></a>
+            </p>
+        </div>
+        
+        <form id="agent-settings-form">
+            <!-- Google Jules -->
+            <div class="api-key-card">
+                <div class="api-key-header">
+                    <div class="agent-info">
+                        <img src="/static/img/google-jules.png" alt="Google Jules" class="agent-logo" onerror="this.style.display='none'">
+                        <div class="agent-info-text">
+                            <h4>Google Jules</h4>
+                            <p>AI-powered coding agent from Google</p>
+                            <a href="https://jules.google.com" target="_blank" class="link small">
+                                Get API Key <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <span class="status-badge" id="jules-status">
+                        <i class="fas fa-circle"></i> Not Configured
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="google-jules-key">API Key</label>
+                    <div class="input-with-toggle">
+                        <input type="password" id="google-jules-key" placeholder="Enter your Google Jules API key">
+                        <button type="button" class="btn-toggle" onclick="togglePassword('google-jules-key')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cursor Agent -->
+            <div class="api-key-card">
+                <div class="api-key-header">
+                    <div class="agent-info">
+                        <div class="agent-icon-fallback">
+                            <i class="fas fa-mouse-pointer"></i>
+                        </div>
+                        <div class="agent-info-text">
+                            <h4>Cursor Agent</h4>
+                            <p>AI assistant from Cursor IDE</p>
+                            <a href="https://cursor.sh" target="_blank" class="link small">
+                                Get API Key <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <span class="status-badge" id="cursor-status">
+                        <i class="fas fa-circle"></i> Not Configured
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="cursor-agent-key">API Key</label>
+                    <div class="input-with-toggle">
+                        <input type="password" id="cursor-agent-key" placeholder="Enter your Cursor Agent API key">
+                        <button type="button" class="btn-toggle" onclick="togglePassword('cursor-agent-key')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Codemagic -->
+            <div class="api-key-card">
+                <div class="api-key-header">
+                    <div class="agent-info">
+                        <div class="agent-icon-fallback">
+                            <i class="fas fa-magic"></i>
+                        </div>
+                        <div class="agent-info-text">
+                            <h4>Codemagic</h4>
+                            <p>CI/CD platform for mobile apps</p>
+                            <a href="https://codemagic.io" target="_blank" class="link small">
+                                Get API Key <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <span class="status-badge" id="codemagic-status">
+                        <i class="fas fa-circle"></i> Not Configured
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="codemagic-key">API Key</label>
+                    <div class="input-with-toggle">
+                        <input type="password" id="codemagic-key" placeholder="Enter your Codemagic API key">
+                        <button type="button" class="btn-toggle" onclick="togglePassword('codemagic-key')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GitHub Copilot -->
+            <div class="api-key-card">
+                <div class="api-key-header">
+                    <div class="agent-info">
+                        <i class="fab fa-github agent-logo"></i>
+                        <div class="agent-info-text">
+                            <h4>GitHub Copilot</h4>
+                            <p>AI pair programmer from GitHub</p>
+                            <a href="https://github.com/settings/copilot" target="_blank" class="link small">
+                                Get Token <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <span class="status-badge" id="github-status">
+                        <i class="fas fa-circle"></i> Not Configured
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="github-copilot-token">Personal Access Token</label>
+                    <div class="input-with-toggle">
+                        <input type="password" id="github-copilot-token" placeholder="Enter your GitHub token">
+                        <button type="button" class="btn-toggle" onclick="togglePassword('github-copilot-token')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AMP Remote -->
+            <div class="api-key-card">
+                <div class="api-key-header">
+                    <div class="agent-info">
+                        <div class="agent-icon-fallback">
+                            <i class="fas fa-cloud"></i>
+                        </div>
+                        <div class="agent-info-text">
+                            <h4>AMP Remote</h4>
+                            <p>Remote build execution platform</p>
+                            <a href="https://amp.remote" target="_blank" class="link small">
+                                Get API Key <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <span class="status-badge" id="amp-status">
+                        <i class="fas fa-circle"></i> Not Configured
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label for="amp-remote-key">API Key</label>
+                    <div class="input-with-toggle">
+                        <input type="password" id="amp-remote-key" placeholder="Enter your AMP Remote API key">
+                        <button type="button" class="btn-toggle" onclick="togglePassword('amp-remote-key')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="save-agent-settings">
+                    <i class="fas fa-save"></i> Save API Keys
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Notifications Tab -->
+<div id="tab-notifications" class="tab-content">
+    <div class="settings-section">
+        <h2>Notification Settings</h2>
+        <form id="notification-settings-form">
+            <div class="form-group">
+                <label for="notification-email">Notification Email</label>
+                <input type="email" id="notification-email" placeholder="your@email.com">
+                <span class="help-text">Receive build status notifications via email</span>
+            </div>
+            
+            <div class="form-group">
+                <label for="webhook-url">Webhook URL</label>
+                <input type="url" id="webhook-url" placeholder="https://hooks.slack.com/services/...">
+                <span class="help-text">Receive build notifications via webhook (Slack, Discord, etc.)</span>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Notification Settings
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Preferences Tab -->
+<div id="tab-preferences" class="tab-content">
+    <div class="settings-section">
+        <h2>Preferences</h2>
+        <form id="preferences-form">
+            <div class="form-group">
+                <label for="default-agent">Default Agent</label>
+                <select id="default-agent">
+                    <option value="">Select default agent...</option>
+                </select>
+                <span class="help-text">Default agent to use for new builds</span>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Preferences
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentTab = 'agents';
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadSettings();
+    loadAgentsForSelect();
+});
+
+function switchTab(tab) {
+    currentTab = tab;
+    
+    document.querySelectorAll('.settings-tabs .tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `tab-${tab}`);
+    });
+}
+
+async function loadSettings() {
+    try {
+        const [settingsRes, agentConfigRes] = await Promise.all([
+            fetch('/api/settings'),
+            fetch('/api/settings/agents')
+        ]);
+        
+        const settings = await settingsRes.json();
+        const agentConfigs = await agentConfigRes.json();
+        
+        // Update status badges
+        updateStatusBadge('jules-status', agentConfigs.agents.find(a => a.type === 'google_jules'));
+        updateStatusBadge('cursor-status', agentConfigs.agents.find(a => a.type === 'cursor_agent'));
+        updateStatusBadge('codemagic-status', agentConfigs.agents.find(a => a.type === 'codemagic'));
+        updateStatusBadge('github-status', agentConfigs.agents.find(a => a.type === 'github_copilot'));
+        updateStatusBadge('amp-status', agentConfigs.agents.find(a => a.type === 'amp_remote'));
+        
+        // Fill notification settings
+        document.getElementById('notification-email').value = settings.notification_email || '';
+        document.getElementById('webhook-url').value = settings.webhook_url || '';
+        
+        // Fill preferences
+        document.getElementById('default-agent').value = settings.default_agent_id || '';
+    } catch (error) {
+        console.error(error);
+        showToast('Failed to load settings', 'error');
+    }
+}
+
+function updateStatusBadge(elementId, agent) {
+    const badge = document.getElementById(elementId);
+    if (agent && agent.configured) {
+        badge.className = 'status-badge configured';
+        badge.innerHTML = '<i class="fas fa-check-circle"></i> Configured';
+    } else {
+        badge.className = 'status-badge';
+        badge.innerHTML = '<i class="fas fa-circle"></i> Not Configured';
+    }
+}
+
+async function loadAgentsForSelect() {
+    try {
+        const response = await fetch('/api/agents');
+        const agents = await response.json();
+        
+        const select = document.getElementById('default-agent');
+        agents.forEach(agent => {
+            const option = document.createElement('option');
+            option.value = agent.id;
+            option.textContent = `${agent.name} (${formatAgentType(agent.agent_type)})`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    const btn = input.nextElementSibling;
+    const icon = btn.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+// Agent settings form
+document.getElementById('agent-settings-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('save-agent-settings');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    
+    const data = {};
+    
+    const julesKey = document.getElementById('google-jules-key').value;
+    if (julesKey) data.google_jules_api_key = julesKey;
+    
+    const cursorKey = document.getElementById('cursor-agent-key').value;
+    if (cursorKey) data.cursor_agent_api_key = cursorKey;
+    
+    const codemagicKey = document.getElementById('codemagic-key').value;
+    if (codemagicKey) data.codemagic_api_key = codemagicKey;
+    
+    const githubToken = document.getElementById('github-copilot-token').value;
+    if (githubToken) data.github_copilot_token = githubToken;
+    
+    const ampKey = document.getElementById('amp-remote-key').value;
+    if (ampKey) data.amp_remote_api_key = ampKey;
+    
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            showToast('API keys saved successfully', 'success');
+            loadSettings();
+            // Clear password fields
+            document.querySelectorAll('input[type="password"]').forEach(input => input.value = '');
+        } else {
+            const error = await response.json();
+            showToast(error.detail || 'Failed to save API keys', 'error');
+        }
+    } catch (error) {
+        showToast('Failed to save API keys', 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Save API Keys';
+    }
+});
+
+// Notification settings form
+document.getElementById('notification-settings-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const data = {
+        notification_email: document.getElementById('notification-email').value,
+        webhook_url: document.getElementById('webhook-url').value
+    };
+    
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            showToast('Notification settings saved', 'success');
+        } else {
+            const error = await response.json();
+            showToast(error.detail || 'Failed to save settings', 'error');
+        }
+    } catch (error) {
+        showToast('Failed to save settings', 'error');
+    }
+});
+
+// Preferences form
+document.getElementById('preferences-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const data = {
+        default_agent_id: document.getElementById('default-agent').value || null
+    };
+    
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            showToast('Preferences saved', 'success');
+        } else {
+            const error = await response.json();
+            showToast(error.detail || 'Failed to save preferences', 'error');
+        }
+    } catch (error) {
+        showToast('Failed to save preferences', 'error');
+    }
+});
+</script>
+{% endblock %}

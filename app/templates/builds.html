@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Builds - AppHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Build Jobs</h1>
+        <p class="subtitle">Manage and monitor your application builds</p>
+    </div>
+    <a href="/builds/new" class="btn btn-primary">
+        <i class="fas fa-plus"></i> New Build
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+    <div class="filter-group">
+        <label>Status:</label>
+        <select id="status-filter" onchange="loadBuilds()">
+            <option value="">All</option>
+            <option value="pending">Pending</option>
+            <option value="queued">Queued</option>
+            <option value="running">Running</option>
+            <option value="success">Success</option>
+            <option value="failed">Failed</option>
+            <option value="cancelled">Cancelled</option>
+        </select>
+    </div>
+    <div class="filter-group search-group">
+        <input type="text" id="search-input" placeholder="Search builds..." onkeyup="handleSearch(event)">
+        <button class="btn btn-secondary" onclick="loadBuilds()">
+            <i class="fas fa-search"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Builds Table -->
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Source</th>
+                <th>Agent</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Duration</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="builds-table">
+            <tr class="loading-row">
+                <td colspan="8">
+                    <div class="loading-spinner"></div>
+                    Loading builds...
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+<div class="pagination" id="pagination">
+    <!-- Pagination will be inserted here -->
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPage = 0;
+const pageSize = 20;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadBuilds();
+});
+
+async function loadBuilds() {
+    const statusFilter = document.getElementById('status-filter').value;
+    const searchQuery = document.getElementById('search-input').value;
+    
+    let url = `/api/builds?skip=${currentPage * pageSize}&limit=${pageSize}`;
+    if (statusFilter) {
+        url += `&status=${statusFilter}`;
+    }
+    
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        const tbody = document.getElementById('builds-table');
+        
+        if (data.items.length === 0 && currentPage === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>No builds found</p>
+                        <a href="/builds/new" class="btn btn-primary">Create New Build</a>
+                    </td>
+                </tr>
+            `;
+            document.getElementById('pagination').innerHTML = '';
+            return;
+        }
+        
+        tbody.innerHTML = data.items.map(build => `
+            <tr>
+                <td>#${build.id}</td>
+                <td>${escapeHtml(build.title)}</td>
+                <td>
+                    <span class="source-badge ${build.source_type}">
+                        <i class="fab fa-${getSourceIcon(build.source_type)}"></i>
+                        ${build.source_type}
+                    </span>
+                </td>
+                <td>${escapeHtml(build.agent_name || 'Unknown')}</td>
+                <td>
+                    <span class="status-badge status-${build.status}">
+                        ${getStatusIcon(build.status)} ${build.status}
+                    </span>
+                </td>
+                <td>${formatDate(build.created_at)}</td>
+                <td>${calculateDuration(build)}</td>
+                <td>
+                    <div class="action-buttons">
+                        <a href="/builds/${build.id}" class="btn btn-sm btn-secondary" title="View">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        ${canCancel(build.status) ? `
+                            <button class="btn btn-sm btn-warning" onclick="cancelBuild(${build.id})" title="Cancel">
+                                <i class="fas fa-stop"></i>
+                            </button>
+                        ` : ''}
+                        <button class="btn btn-sm btn-danger" onclick="deleteBuild(${build.id})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+        
+        renderPagination(data.total);
+    } catch (error) {
+        showToast('Failed to load builds', 'error');
+        console.error(error);
+    }
+}
+
+function renderPagination(total) {
+    const totalPages = Math.ceil(total / pageSize);
+    const container = document.getElementById('pagination');
+    
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = `
+        <button class="btn btn-secondary" ${currentPage === 0 ? 'disabled' : ''} onclick="goToPage(${currentPage - 1})">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <span class="page-info">Page ${currentPage + 1} of ${totalPages}</span>
+        <button class="btn btn-secondary" ${currentPage >= totalPages - 1 ? 'disabled' : ''} onclick="goToPage(${currentPage + 1})">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    `;
+    
+    container.innerHTML = html;
+}
+
+function goToPage(page) {
+    currentPage = page;
+    loadBuilds();
+}
+
+function handleSearch(event) {
+    if (event.key === 'Enter') {
+        currentPage = 0;
+        loadBuilds();
+    }
+}
+
+function getSourceIcon(sourceType) {
+    const icons = {
+        'github': 'github',
+        'gitlab': 'gitlab',
+        'upload': 'file-archive'
+    };
+    return icons[sourceType] || 'code';
+}
+
+function getStatusIcon(status) {
+    const icons = {
+        'pending': '<i class="fas fa-clock"></i>',
+        'queued': '<i class="fas fa-list"></i>',
+        'running': '<i class="fas fa-spinner fa-spin"></i>',
+        'success': '<i class="fas fa-check-circle"></i>',
+        'failed': '<i class="fas fa-times-circle"></i>',
+        'cancelled': '<i class="fas fa-ban"></i>'
+    };
+    return icons[status] || '';
+}
+
+function canCancel(status) {
+    return ['pending', 'queued', 'running'].includes(status);
+}
+
+function calculateDuration(build) {
+    if (!build.started_at) return '-';
+    const end = build.completed_at ? new Date(build.completed_at) : new Date();
+    const start = new Date(build.started_at);
+    const diff = Math.floor((end - start) / 1000);
+    
+    if (diff < 60) return `${diff}s`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ${diff % 60}s`;
+    return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
+}
+
+async function cancelBuild(buildId) {
+    if (!confirm('Are you sure you want to cancel this build?')) return;
+    
+    try {
+        const response = await fetch(`/api/builds/${buildId}/cancel`, { method: 'POST' });
+        if (response.ok) {
+            showToast('Build cancelled', 'success');
+            loadBuilds();
+        } else {
+            const error = await response.json();
+            showToast(error.detail || 'Failed to cancel build', 'error');
+        }
+    } catch (error) {
+        showToast('Failed to cancel build', 'error');
+    }
+}
+
+async function deleteBuild(buildId) {
+    if (!confirm('Are you sure you want to delete this build? This action cannot be undone.')) return;
+    
+    try {
+        const response = await fetch(`/api/builds/${buildId}`, { method: 'DELETE' });
+        if (response.ok) {
+            showToast('Build deleted', 'success');
+            loadBuilds();
+        } else {
+            const error = await response.json();
+            showToast(error.detail || 'Failed to delete build', 'error');
+        }
+    } catch (error) {
+        showToast('Failed to delete build', 'error');
+    }
+}
+</script>
+{% endblock %}
