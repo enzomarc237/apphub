@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}New Build - AppHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Create New Build</h1>
+        <p class="subtitle">Submit your code for automated building</p>
+    </div>
+</div>
+
+<form id="build-form" class="form-container" enctype="multipart/form-data">
+    <!-- Build Info -->
+    <div class="form-section">
+        <h3>Build Information</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="title">Build Title <span class="required">*</span></label>
+                <input type="text" id="title" name="title" required placeholder="e.g., My App v1.0.0">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="3" placeholder="Optional description of this build"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Source Selection -->
+    <div class="form-section">
+        <h3>Source Code</h3>
+        <div class="source-tabs">
+            <button type="button" class="tab-btn active" data-tab="github" onclick="switchTab('github')">
+                <i class="fab fa-github"></i> GitHub
+            </button>
+            <button type="button" class="tab-btn" data-tab="gitlab" onclick="switchTab('gitlab')">
+                <i class="fab fa-gitlab"></i> GitLab
+            </button>
+            <button type="button" class="tab-btn" data-tab="upload" onclick="switchTab('upload')">
+                <i class="fas fa-upload"></i> Upload
+            </button>
+        </div>
+
+        <!-- GitHub Tab -->
+        <div id="tab-github" class="tab-content active">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="github-repo">Repository URL <span class="required">*</span></label>
+                    <input type="url" id="github-repo" name="repository_url" placeholder="https://github.com/username/repo">
+                </div>
+                <div class="form-group small">
+                    <label for="github-branch">Branch</label>
+                    <input type="text" id="github-branch" name="branch" value="main" placeholder="main">
+                </div>
+            </div>
+        </div>
+
+        <!-- GitLab Tab -->
+        <div id="tab-gitlab" class="tab-content">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="gitlab-repo">Repository URL <span class="required">*</span></label>
+                    <input type="url" id="gitlab-repo" placeholder="https://gitlab.com/username/repo">
+                </div>
+                <div class="form-group small">
+                    <label for="gitlab-branch">Branch</label>
+                    <input type="text" id="gitlab-branch" value="main" placeholder="main">
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Tab -->
+        <div id="tab-upload" class="tab-content">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="file-upload">Upload Archive <span class="required">*</span></label>
+                    <div class="file-upload-area" id="file-upload-area">
+                        <input type="file" id="file-upload" name="file" accept=".zip,.tar.gz,.tar.bz2,.7z">
+                        <div class="upload-placeholder">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Drag and drop your code archive here, or click to browse</p>
+                            <span class="file-types">Supported: .zip, .tar.gz, .tar.bz2, .7z</span>
+                        </div>
+                        <div class="file-selected" style="display: none;">
+                            <i class="fas fa-file-archive"></i>
+                            <span class="filename"></span>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="clearFile()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Build Configuration -->
+    <div class="form-section">
+        <h3>Build Configuration</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="agent">AI Agent <span class="required">*</span></label>
+                <select id="agent" name="agent_id" required>
+                    <option value="">Select an agent...</option>
+                </select>
+                <span class="help-text">Choose an AI agent to handle dependency management and build execution</span>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="build-command">Build Command</label>
+                <input type="text" id="build-command" name="build_command" placeholder="e.g., make build, npm run build, cargo build --release">
+                <span class="help-text">Optional custom build command. If not specified, the agent will auto-detect.</span>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="env-vars">Environment Variables</label>
+                <textarea id="env-vars" name="environment_vars" rows="3" placeholder='{"NODE_ENV": "production", "API_KEY": "secret"}'></textarea>
+                <span class="help-text">JSON object of environment variables (optional)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="form-actions">
+        <a href="/builds" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary" id="submit-btn">
+            <i class="fas fa-rocket"></i> Start Build
+        </button>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentTab = 'github';
+
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadAgents();
+    setupFileUpload();
+    setupForm();
+});
+
+async function loadAgents() {
+    try {
+        const response = await fetch('/api/agents?active_only=true');
+        const agents = await response.json();
+        
+        const select = document.getElementById('agent');
+        agents.forEach(agent => {
+            const option = document.createElement('option');
+            option.value = agent.id;
+            option.textContent = `${agent.name} (${formatAgentType(agent.agent_type)})`;
+            if (!agent.is_configured) {
+                option.textContent += ' - Not Configured';
+                option.disabled = true;
+            }
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Failed to load agents:', error);
+        showToast('Failed to load agents', 'error');
+    }
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `tab-${tab}`);
+    });
+    
+    // Update required fields
+    if (tab === 'upload') {
+        document.getElementById('github-repo').removeAttribute('required');
+        document.getElementById('file-upload').setAttribute('required', 'required');
+    } else {
+        document.getElementById('file-upload').removeAttribute('required');
+        document.getElementById(`${tab}-repo`).setAttribute('required', 'required');
+    }
+}
+
+function setupFileUpload() {
+    const area = document.getElementById('file-upload-area');
+    const input = document.getElementById('file-upload');
+    
+    area.addEventListener('click', () => input.click());
+    area.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        area.classList.add('dragover');
+    });
+    area.addEventListener('dragleave', () => {
+        area.classList.remove('dragover');
+    });
+    area.addEventListener('drop', (e) => {
+        e.preventDefault();
+        area.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            showSelectedFile(e.dataTransfer.files[0]);
+        }
+    });
+    input.addEventListener('change', () => {
+        if (input.files.length) {
+            showSelectedFile(input.files[0]);
+        }
+    });
+}
+
+function showSelectedFile(file) {
+    document.querySelector('.upload-placeholder').style.display = 'none';
+    document.querySelector('.file-selected').style.display = 'flex';
+    document.querySelector('.file-selected .filename').textContent = file.name;
+}
+
+function clearFile() {
+    document.getElementById('file-upload').value = '';
+    document.querySelector('.upload-placeholder').style.display = 'block';
+    document.querySelector('.file-selected').style.display = 'none';
+}
+
+function setupForm() {
+    document.getElementById('build-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Build...';
+        
+        const formData = new FormData(this);
+        
+        // Set source_type based on current tab
+        formData.set('source_type', currentTab);
+        
+        // Set repository_url and branch based on tab
+        if (currentTab === 'github') {
+            formData.set('repository_url', document.getElementById('github-repo').value);
+            formData.set('branch', document.getElementById('github-branch').value);
+        } else if (currentTab === 'gitlab') {
+            formData.set('repository_url', document.getElementById('gitlab-repo').value);
+            formData.set('branch', document.getElementById('gitlab-branch').value);
+        }
+        
+        try {
+            const response = await fetch('/api/builds', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                const build = await response.json();
+                showToast('Build created successfully!', 'success');
+                window.location.href = `/builds/${build.id}`;
+            } else {
+                const error = await response.json();
+                showToast(error.detail || 'Failed to create build', 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-rocket"></i> Start Build';
+            }
+        } catch (error) {
+            showToast('Failed to create build', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-rocket"></i> Start Build';
+        }
+    });
+}
+</script>
+{% endblock %}
