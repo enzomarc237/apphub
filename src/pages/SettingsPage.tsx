@@ -1,15 +1,27 @@
 import { useState } from 'react';
 import { useSettingsStore } from '@/store/settingsStore';
 import { AI_AGENTS } from '@/lib/agents';
-import { Eye, EyeOff, Save, CheckCircle, ExternalLink } from 'lucide-react';
+import { Eye, EyeOff, Save, CheckCircle, ExternalLink, Info } from 'lucide-react';
 import type { AgentId } from '@/types';
 
 const AGENT_DOCS: Record<AgentId, string> = {
-  google_jules: 'https://jules.google.com',
-  cursor_agent: 'https://cursor.sh',
+  google_jules: 'https://developers.google.com/jules/api',
+  cursor_agent: 'https://cursor.com/docs/cloud-agent/api/endpoints',
   codemagic: 'https://codemagic.io/docs',
   github_copilot: 'https://github.com/features/copilot',
   amp_remote: 'https://ampere.cloud',
+};
+
+/** Extra guidance shown under the API key field for agents with real API support. */
+const AGENT_HINTS: Partial<Record<AgentId, string>> = {
+  google_jules:
+    'Obtain an API key from the Google Cloud Console and enable the Jules API. ' +
+    'Builds are submitted as Jules sessions via POST /v1alpha/sessions. ' +
+    'Only GitHub repositories are supported.',
+  cursor_agent:
+    'Generate an API key from your Cursor dashboard (cursor.com/settings). ' +
+    'Builds are submitted as Cursor background agents via POST /v0/agents. ' +
+    'Authentication uses HTTP Basic with your key as the username.',
 };
 
 export default function SettingsPage() {
@@ -19,6 +31,7 @@ export default function SettingsPage() {
   const [localKeys, setLocalKeys] = useState<Record<string, string>>(() =>
     Object.fromEntries(settings.agents.map((a) => [a.agentId, a.apiKey]))
   );
+  const [localProxy, setLocalProxy] = useState(settings.corsProxyUrl ?? '');
 
   const toggleShowKey = (agentId: string) => {
     setShowKeys((prev) => ({ ...prev, [agentId]: !prev[agentId] }));
@@ -33,6 +46,10 @@ export default function SettingsPage() {
     setTimeout(() => setSavedAgents((prev) => ({ ...prev, [agentId]: false })), 2000);
   };
 
+  const handleSaveProxy = () => {
+    updateSettings({ corsProxyUrl: localProxy.trim() });
+  };
+
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <div className="mb-8">
@@ -45,17 +62,26 @@ export default function SettingsPage() {
         <h2 className="font-semibold text-gray-900 mb-1">AI Agent Configuration</h2>
         <p className="text-sm text-gray-500 mb-5">
           Add your API keys for each AI build agent. Keys are stored locally in your browser.
+          Agents marked <span className="font-medium text-blue-600">Live API</span> submit real
+          remote tasks when a key is provided; others run a local simulation.
         </p>
         <div className="space-y-5">
           {AI_AGENTS.map((agent) => {
             const config = settings.agents.find((a) => a.agentId === agent.id);
             const isEnabled = config?.enabled || false;
+            const hint = AGENT_HINTS[agent.id];
+            const isLive = agent.id === 'google_jules' || agent.id === 'cursor_agent';
             return (
               <div key={agent.id} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0 mr-3">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-medium text-gray-900 text-sm">{agent.name}</h3>
+                      {isLive && (
+                        <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                          Live API
+                        </span>
+                      )}
                       {isEnabled && (
                         <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
                           <CheckCircle className="w-3 h-3" /> Active
@@ -68,12 +94,20 @@ export default function SettingsPage() {
                     href={AGENT_DOCS[agent.id]}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700"
+                    className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 flex-shrink-0"
                   >
                     <ExternalLink className="w-3 h-3" />
                     Docs
                   </a>
                 </div>
+
+                {hint && (
+                  <div className="flex gap-2 mb-3 p-2 bg-blue-50 rounded-lg">
+                    <Info className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-700">{hint}</p>
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <input
@@ -93,7 +127,7 @@ export default function SettingsPage() {
                   </div>
                   <button
                     onClick={() => handleSaveAgent(agent.id as AgentId)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex-shrink-0 ${
                       savedAgents[agent.id]
                         ? 'bg-green-100 text-green-700'
                         : 'bg-primary-600 text-white hover:bg-primary-700'
@@ -110,6 +144,41 @@ export default function SettingsPage() {
             );
           })}
         </div>
+      </div>
+
+      {/* CORS Proxy */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <h2 className="font-semibold text-gray-900 mb-1">CORS Proxy (optional)</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Browser security prevents direct calls to external APIs. If you see CORS errors when
+          using Google Jules or Cursor Agent, enter the base URL of a CORS proxy you control.
+          All agent API requests will be routed through{' '}
+          <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">
+            {'{proxyUrl}/{originalApiUrl}'}
+          </code>
+          .
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="url"
+            value={localProxy}
+            onChange={(e) => setLocalProxy(e.target.value)}
+            placeholder="http://localhost:8080  (leave blank to call APIs directly)"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+          <button
+            onClick={handleSaveProxy}
+            className="flex items-center gap-1.5 px-3 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors flex-shrink-0"
+          >
+            <Save className="w-4 h-4" /> Save
+          </button>
+        </div>
+        {settings.corsProxyUrl && (
+          <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" />
+            Proxy configured: {settings.corsProxyUrl}
+          </p>
+        )}
       </div>
 
       {/* General Settings */}

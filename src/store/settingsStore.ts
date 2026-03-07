@@ -12,6 +12,7 @@ const defaultSettings: AppSettings = {
   ],
   notificationsEnabled: true,
   theme: 'light',
+  corsProxyUrl: '',
 };
 
 interface SettingsStore {

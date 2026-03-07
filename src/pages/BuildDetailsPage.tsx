@@ -82,6 +82,12 @@ export default function BuildDetailsPage() {
                 <p className="font-medium text-gray-900">{formatDate(job.completedAt)}</p>
               </div>
             )}
+            {job.externalTaskId && (
+              <div className="col-span-2">
+                <p className="text-gray-500 mb-0.5">Remote Task ID</p>
+                <p className="font-medium text-gray-900 font-mono text-xs break-all">{job.externalTaskId}</p>
+              </div>
+            )}
           </div>
           {job.errorMessage && (
             <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">

@@ -33,6 +33,8 @@ export interface BuildJob {
   logs?: string[];
   artifactId?: string;
   errorMessage?: string;
+  /** ID of the remote task (Jules session ID or Cursor agent ID) when using a real API */
+  externalTaskId?: string;
 }
 
 export interface Artifact {
@@ -60,6 +62,12 @@ export interface AppSettings {
   defaultAgent?: AgentId;
   notificationsEnabled: boolean;
   theme: 'light' | 'dark';
+  /**
+   * Optional CORS proxy base URL (e.g. http://localhost:8080).
+   * When set, all agent API calls are routed through
+   * `{corsProxyUrl}/{originalApiUrl}` to bypass browser CORS restrictions.
+   */
+  corsProxyUrl?: string;
 }
 
 export interface User {
